@@ -13,6 +13,12 @@ use App\Services\DcadDataNormalizer as Normalizer;
 
 class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
 {
+    public readonly int $noUpdatesRows;
+
+    public readonly int $propertyCreations;
+
+    public readonly int $ownerCreations;
+
     public function collection(Collection $rows): void
     {
         foreach ($rows as $index => $row)
@@ -28,6 +34,10 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
                 'zip_code' => Normalizer::parseFiveDigitZipCode($row, "property_zipcode"),
             ]);
 
+            if ($property->wasRecentlyCreated) {
+                $this->propertyCreations ? $this->propertyCreations++ : $this->propertyCreations = 1;
+            }
+
             $propertyOwner = Owner::firstOrCreate([
                 'name' => Normalizer::ucwordsFormat($row, "owner_name1"),
                 'name_2' => Normalizer::ucwordsFormat($row, "owner_name2"),
@@ -38,7 +48,12 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
                 'country' => Normalizer::parseCountry($row, "owner_country"),
             ]);
 
+            if ($propertyOwner->wasRecentlyCreated) {
+                $this->ownerCreations ? $this->ownerCreations++ : $this->ownerCreations = 1;
+            }
+
             if ($property->activeOwners->contains($propertyOwner)) {
+                $this->noUpdatesRows ? $this->noUpdatesRows++ : $this->noUpdatesRows = 1;
                 continue;
             }
             $previousOwners = $property->activeOwners;

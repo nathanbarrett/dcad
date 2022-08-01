@@ -2,13 +2,14 @@
 
 namespace App\Console\Commands;
 
-use App\Services\DcadProcessor;
-use Carbon\Carbon;
+use App\Jobs\CleanUpAndStoreDcadDataJob;
+use App\Jobs\ImportAccountInfoCsvJob;
+use App\Jobs\ImportMultiOwnerCsvJob;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Console\Helper\ProgressBar;
+use Throwable;
 
 class DownloadAndImportDcadData extends Command
 {
@@ -28,29 +29,30 @@ class DownloadAndImportDcadData extends Command
 
     private ?ProgressBar $downloadProgress = null;
 
-    public function handle(DcadProcessor $dcad): int
+    public function handle(): int
     {
         $start = now();
 
-//        if (! $data = $this->download()) {
-//            return self::FAILURE;
-//        }
-//
-//        $savedFilePath = $this->store($data);
-//
-//        if (! $folderPath = $this->unzipFile($savedFilePath)) {
-//            return self::FAILURE;
-//        }
+        if (! $data = $this->download()) {
+            return self::FAILURE;
+        }
+        $savedFilePath = $this->store($data);
+        $this->info("Downloaded file in " . now()->diffInMinutes($start) . " minutes");
 
-        $folderPath = storage_path('app/dcad/dcad_data_2022-07-29');
+        $start = now();
+        if (! $folderPath = $this->unzipFile($savedFilePath)) {
+            return self::FAILURE;
+        }
+        $this->info("Unzipped file in " . now()->diffInMinutes($start) . " minutes");
 
-//        $this->info("Importing account_info.csv ...");
-//        $dcad->importAccountInfoCsv($folderPath, $this->output);
+        Bus::chain([
+            new ImportAccountInfoCsvJob($folderPath),
+            new ImportMultiOwnerCsvJob($folderPath),
+            new CleanUpAndStoreDcadDataJob,
+        ])->catch(function (Throwable $e) {
+            dispatch(new CleanUpAndStoreDcadDataJob);
+        })->dispatch();
 
-        $this->info("Importing multi_owner.csv ...");
-        $dcad->importMultiOwnerCsv($folderPath);
-
-        $this->info("Completed in " . now()->diffInMinutes($start) . " minutes");
         return self::SUCCESS;
     }
 
@@ -145,20 +147,5 @@ class DownloadAndImportDcadData extends Command
         }
 
         return $filePath;
-    }
-
-    private function transferZippedFileToRemoteStorage(string $filePath): void
-    {
-        $diskName = 's3-dcad-data';
-        $fileName = substr($filePath, strrpos($filePath, '/') + 1);
-        $savePath = 'dcad_downloads/' . app()->environment() . '/' . $fileName;
-        $bucketName = config()->get('filesystems.disks.' . $diskName . '.bucket');
-        $region = config()->get('filesystems.disks.' . $diskName . '.region');
-
-        $this->info("Saving to https://" . $bucketName . '.s3.' . $region . '.amazonaws.com/' . $savePath);
-        Storage::disk($diskName)->put(
-            app()->environment() . '/' . $fileName,
-            $filePath
-        );
     }
 }

@@ -11,6 +11,12 @@ use Illuminate\Support\Facades\Log;
 
 class MultiOwnerCsvImport extends BaseCsvImport
 {
+    public readonly int $zeroRecordMatches;
+
+    public readonly int $multipleRecordMatches;
+
+    public readonly int $newRecordUpdates;
+
     public function collection(Collection $rows): void
     {
         /* @var Collection $row */
@@ -36,6 +42,7 @@ class MultiOwnerCsvImport extends BaseCsvImport
             ->get();
 
         if ($records->count() === 0) {
+            $this->zeroRecordMatches ? $this->zeroRecordMatches++ : $this->zeroRecordMatches = 1;
             Log::notice(
                 'Zero record matches for owner percentage change',
                 compact('ownerName', 'accountNumber', 'ownershipPercent')
@@ -43,6 +50,7 @@ class MultiOwnerCsvImport extends BaseCsvImport
             return;
         }
         if ($records->count() > 1) {
+            $this->multipleRecordMatches ? $this->multipleRecordMatches++ : $this->multipleRecordMatches = 1;
             $pivotIds = $records->pluck('id')->toArray();
             Log::notice(
                 'Multiple record matches for owner percentage change',
@@ -58,6 +66,7 @@ class MultiOwnerCsvImport extends BaseCsvImport
                 ->where('id', $record->id)
                 ->update(['ownership_percent' => $ownershipPercent]);
             if (Carbon::createFromFormat('Y-m-d H:i:s', $record->created_at)->isToday()) {
+                $this->newRecordUpdates ? $this->newRecordUpdates++ : $this->newRecordUpdates = 1;
                 return;
             }
             PropertyChange::create([
