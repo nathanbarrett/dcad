@@ -9,13 +9,13 @@ class DcadDataNormalizer
 {
     public static function ucwordsFormat(Collection $row, string $key): ?string
     {
-        $text = trim($row->get($key, ""));
+        $text = trim($row->get($key, "") ?: "");
         return $text ? self::forceUcWords($text) : null;
     }
 
     public static function parseDate(Collection $row, string $key, bool $canBeFuture = false): ?string
     {
-        $date = trim($row->get($key, ""));
+        $date = trim($row->get($key, "") ?: "");
         if( ! $date)
         {
             return null;
@@ -63,7 +63,7 @@ class DcadDataNormalizer
 
     public static function parseCityName(Collection $row, string $key): ?string
     {
-        $city = preg_replace('/\(DALLAS.*\)/', '', $row->get($key, ""));
+        $city = preg_replace('/\(DALLAS.*\)/', '', $row->get($key, "") ?: "");
         if (! $city) {
             return null;
         }

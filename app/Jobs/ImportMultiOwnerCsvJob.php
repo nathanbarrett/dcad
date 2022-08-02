@@ -25,12 +25,14 @@ class ImportMultiOwnerCsvJob implements ShouldQueue
 
     public function handle(DcadProcessor $dcad): void
     {
+        $start = now();
         $stats = $dcad->importMultiOwnerCsv($this->folderPath);
         // TODO log this info to CloudWatch
         Log::info("imported multi_owner.csv", [
             'zero_record_matches' => $stats->zeroRecordMatches,
             'multiple_record_matches' => $stats->multipleRecordMatches,
             'new_record_updates' => $stats->newRecordUpdates,
+            'processing_minutes' => now()->diffInMinutes($start),
         ]);
     }
 }

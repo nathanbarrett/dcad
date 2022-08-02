@@ -22,12 +22,14 @@ class ImportAccountInfoCsvJob implements ShouldQueue
 
     public function handle(DcadProcessor $dcad): void
     {
+        $start = now();
         $stats = $dcad->importAccountInfoCsv($this->folderPath);
         // TODO log this to CloudWatch
         Log::info("account_info.csv imported", [
             'properties_created' => $stats->propertyCreations,
             'owners_created' => $stats->ownerCreations,
-            'existing_relation_no_update' => $stats->noUpdatesRows
+            'existing_relation_no_update' => $stats->noUpdatesRows,
+            'processing_minutes' => now()->diffInMinutes($start),
         ]);
     }
 }

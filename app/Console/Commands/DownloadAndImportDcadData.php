@@ -37,13 +37,13 @@ class DownloadAndImportDcadData extends Command
             return self::FAILURE;
         }
         $savedFilePath = $this->store($data);
-        $this->info("Downloaded file in " . now()->diffInMinutes($start) . " minutes");
+        $this->info("Downloaded file in " . now()->diffInSeconds($start) . " seconds");
 
         $start = now();
         if (! $folderPath = $this->unzipFile($savedFilePath)) {
             return self::FAILURE;
         }
-        $this->info("Unzipped file in " . now()->diffInMinutes($start) . " minutes");
+        $this->info("Unzipped file in " . now()->diffInSeconds($start) . " seconds");
 
         Bus::chain([
             new ImportAccountInfoCsvJob($folderPath),

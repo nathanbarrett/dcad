@@ -8,16 +8,19 @@ use App\Models\PropertyChange;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\WithProgressBar;
 use App\Services\DcadDataNormalizer as Normalizer;
 
 class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
 {
-    public readonly int $noUpdatesRows;
+    public int $noUpdatesRows = 0;
 
-    public readonly int $propertyCreations;
+    public int $propertyCreations = 0;
 
-    public readonly int $ownerCreations;
+    public int $ownerCreations = 0;
+
+    public int $processedRows = 0;
 
     public function collection(Collection $rows): void
     {
@@ -35,7 +38,7 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
             ]);
 
             if ($property->wasRecentlyCreated) {
-                $this->propertyCreations ? $this->propertyCreations++ : $this->propertyCreations = 1;
+                $this->propertyCreations++;
             }
 
             $propertyOwner = Owner::firstOrCreate([
@@ -49,11 +52,11 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
             ]);
 
             if ($propertyOwner->wasRecentlyCreated) {
-                $this->ownerCreations ? $this->ownerCreations++ : $this->ownerCreations = 1;
+                $this->ownerCreations++;
             }
 
             if ($property->activeOwners->contains($propertyOwner)) {
-                $this->noUpdatesRows ? $this->noUpdatesRows++ : $this->noUpdatesRows = 1;
+                $this->noUpdatesRows++;
                 continue;
             }
             $previousOwners = $property->activeOwners;
@@ -82,8 +85,14 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
                     ]
                 ]);
             }
-
         }
+        $this->processedRows += count($rows);
+        Log::debug('Processed rows', [
+            'processedRows' => $this->processedRows,
+            'propertyCreations' => $this->propertyCreations,
+            'noUpdateRows' => $this->noUpdatesRows,
+            'ownerCreations' => $this->ownerCreations
+        ]);
     }
 
     private function isResidentialProperty(Collection $row): bool

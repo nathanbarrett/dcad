@@ -53,7 +53,7 @@ class CleanUpAndStoreDcadDataJob implements ShouldQueue
         $files->each(function (string $filePath) {
              $this->remoteDisk()->putFileAs(
                  $this->remoteStoragePath(),
-                 new File($filePath),
+                 new File(storage_path('app/' . $filePath)),
                  now()->format('Y-m-d') . '_dcad_data.zip'
              );
         });
