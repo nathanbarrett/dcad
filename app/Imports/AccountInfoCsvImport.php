@@ -45,8 +45,14 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
                     'address_1' => $this->getStreetAddress($row),
                     'city' => Normalizer::parseCityName($row, "property_city"),
                     'state' => 'TX',
-                    'zip_code' => Normalizer::parseFiveDigitZipCode($row, "property_zipcode"),
                 ]);
+
+            // Sometimes properties are listed multiple times, some without zip code info
+            $rowZipCode = Normalizer::parseFiveDigitZipCode($row, "property_zipcode");
+            if (!$property->zip_code && $rowZipCode) {
+                $property->zip_code = $rowZipCode;
+                $property->save();
+            }
 
             if (!$property->address_1 || !$property->city || !$property->zip_code) {
                 Log::debug('Account info row missing critical property data', $row->all());
