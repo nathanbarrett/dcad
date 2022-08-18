@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\Owner;
 use App\Models\Property;
 use App\Models\PropertyChange;
+use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
@@ -22,34 +23,63 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
 
     public int $processedRows = 0;
 
+    private Carbon $isNewCutoffTime;
+
+    public function __construct()
+    {
+        $this->isNewCutoffTime = now()->subHours(8);
+    }
+
     public function collection(Collection $rows): void
     {
+        /* @var Collection $row */
         foreach ($rows as $index => $row)
         {
             if (! $this->isResidentialProperty($row)) {
                 continue;
             }
             /* @var Property $property */
-            $property = Property::with('activeOwners')->firstOrCreate([
-                'address_1' => $this->getStreetAddress($row),
-                'city' => Normalizer::parseCityName($row, "property_city"),
-                'state' => 'TX',
-                'zip_code' => Normalizer::parseFiveDigitZipCode($row, "property_zipcode"),
-            ]);
+            $property = Property::query()
+                ->with('activeOwners')
+                ->firstOrCreate([
+                    'address_1' => $this->getStreetAddress($row),
+                    'city' => Normalizer::parseCityName($row, "property_city"),
+                    'state' => 'TX',
+                    'zip_code' => Normalizer::parseFiveDigitZipCode($row, "property_zipcode"),
+                ]);
+
+            if (!$property->address_1 || !$property->city || !$property->zip_code) {
+                Log::debug('Account info row missing critical property data', $row->all());
+            }
 
             if ($property->wasRecentlyCreated) {
                 $this->propertyCreations++;
             }
 
-            $propertyOwner = Owner::firstOrCreate([
-                'name' => Normalizer::ucwordsFormat($row, "owner_name1"),
-                'name_2' => Normalizer::ucwordsFormat($row, "owner_name2"),
-                'address_1' => Normalizer::ucwordsFormat($row, "owner_address_line2"),
-                'city' => Normalizer::parseCityName($row, "owner_city"),
-                'state' => Normalizer::ucwordsFormat($row, "owner_state"),
-                'zip_code' => Normalizer::parseFiveDigitZipCode($row, "owner_zipcode"),
-                'country' => Normalizer::parseCountry($row, "owner_country"),
-            ]);
+            $propertyOwner = Owner::query()
+                ->firstOrCreate([
+                    'name' => Normalizer::ucwordsFormat($row, "owner_name1"),
+                    'name_2' => Normalizer::ucwordsFormat($row, "owner_name2"),
+                    'address_1' => Normalizer::ucwordsFormat($row, "owner_address_line2"),
+                    'city' => Normalizer::parseCityName($row, "owner_city"),
+                    'state' => Normalizer::ucwordsFormat($row, "owner_state"),
+                    'zip_code' => Normalizer::parseFiveDigitZipCode($row, "owner_zipcode"),
+                    'country' => Normalizer::parseCountry($row, "owner_country"),
+                ]);
+
+            if (
+                !(
+                    $propertyOwner->name &&
+                    $propertyOwner->address_1 &&
+                    $propertyOwner->city &&
+                    $propertyOwner->state &&
+                    $propertyOwner->zip_code &&
+                    $propertyOwner->country
+                )
+            ) {
+                Log::debug('Account info row missing critical owner data', $row->all());
+
+            }
 
             if ($propertyOwner->wasRecentlyCreated) {
                 $this->ownerCreations++;
@@ -76,7 +106,7 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
                 'account_num' => $accountNumber ?: null,
                 'deed_transferred_at' =>  Normalizer::parseDate($row, "deed_txfr_date"),
             ]);
-            if (! $property->wasRecentlyCreated) {
+            if ($property->created_at->lessThan($this->isNewCutoffTime)) {
                 PropertyChange::create([
                     'property_id' => $property->id,
                     'type' => PropertyChange::TYPE_OWNER_UPDATE,

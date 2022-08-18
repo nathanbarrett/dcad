@@ -10,7 +10,7 @@ class DcadProcessor
 {
     public function importAccountInfoCsv(string $path, ?OutputStyle $output = null): AccountInfoCsvImportStats
     {
-        $import = (new AccountInfoCsvImport);
+        $import = new AccountInfoCsvImport();
         if ($output) {
             $import->withOutput($output);
         }
@@ -25,7 +25,7 @@ class DcadProcessor
 
     public function importMultiOwnerCsv(string $path, ?OutputStyle $output = null): MultiOwnerCsvImportStats
     {
-        $import = (new MultiOwnerCsvImport);
+        $import = new MultiOwnerCsvImport();
         if ($output) {
             $import->withOutput($output);
         }

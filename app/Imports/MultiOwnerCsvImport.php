@@ -65,8 +65,8 @@ class MultiOwnerCsvImport extends BaseCsvImport
             DB::table('owner_property')
                 ->where('id', $record->id)
                 ->update(['ownership_percent' => $ownershipPercent]);
-            if (Carbon::createFromFormat('Y-m-d H:i:s', $record->created_at)->isToday()) {
-                $this->newRecordUpdates++;
+            $this->newRecordUpdates++;
+            if (Carbon::createFromFormat('Y-m-d H:i:s', $record->created_at)->lessThan(now()->subHours(3))) {
                 return;
             }
             PropertyChange::create([
