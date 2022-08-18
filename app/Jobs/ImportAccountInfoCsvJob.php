@@ -15,6 +15,8 @@ class ImportAccountInfoCsvJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $timeout = 172800;
+
     public function __construct(public readonly string $folderPath)
     {
         //
