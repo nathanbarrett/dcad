@@ -62,7 +62,7 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
                 $this->propertyCreations++ :
                 $property->touch();
 
-            $ownerName = Normalizer::ucwordsFormat($row, "owner_name1") ?: $row->get("legal1");
+            $ownerName = Normalizer::ucwordsFormat($row, "owner_name1");
             if (!$ownerName) {
                 continue;
             }
