@@ -18,6 +18,8 @@ class CleanUpAndStoreDcadDataJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public function __construct(private readonly bool $skipArchiveStorage = false) {}
+
     public function handle(): void
     {
         $foldersDeleted = $this->deleteAllUnzippedDcadData();
@@ -49,6 +51,10 @@ class CleanUpAndStoreDcadDataJob implements ShouldQueue
     {
         $files = collect($this->localDisk()->allFiles('dcad'))
             ->filter(fn ($file) => Str::endsWith($file, ".zip"));
+
+        if ($this->skipArchiveStorage) {
+            return $files->toArray();
+        }
 
         $files->each(function (string $filePath) {
              $this->remoteDisk()->putFileAs(

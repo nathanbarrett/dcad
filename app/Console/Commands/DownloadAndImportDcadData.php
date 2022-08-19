@@ -2,12 +2,17 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\AccountInfoImportCleanup;
 use App\Jobs\CleanUpAndStoreDcadDataJob;
 use App\Jobs\ImportAccountInfoCsvJob;
 use App\Jobs\ImportMultiOwnerCsvJob;
+use App\Jobs\SendSuccessfulImportDetailsJob;
+use App\Notifications\DcadImportErroredNotification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Throwable;
 
@@ -18,7 +23,8 @@ class DownloadAndImportDcadData extends Command
      *
      * @var string
      */
-    protected $signature = 'dcad:cron:download-import-data';
+    protected $signature = 'dcad:cron:download-import-data
+                            {--skip-account-info : skips processing account_info.csv and does not store the archive file}';
 
     /**
      * The console command description.
@@ -31,8 +37,8 @@ class DownloadAndImportDcadData extends Command
 
     public function handle(): int
     {
+        Log::debug('DCAD Import Started');
         $start = now();
-
         if (! $data = $this->download()) {
             return self::FAILURE;
         }
@@ -45,13 +51,26 @@ class DownloadAndImportDcadData extends Command
         }
         $this->info("Unzipped file in " . now()->diffInSeconds($start) . " seconds");
 
-        Bus::chain([
-            new ImportAccountInfoCsvJob($folderPath),
-            new ImportMultiOwnerCsvJob($folderPath),
-            new CleanUpAndStoreDcadDataJob,
-        ])->catch(function (Throwable $e) {
-            dispatch(new CleanUpAndStoreDcadDataJob);
-        })->dispatch();
+        $jobChain = [];
+        if (!$this->option('skip-account-info')) {
+            $jobChain[] = new ImportAccountInfoCsvJob(folderPath: $folderPath);
+            $jobChain[] = new AccountInfoImportCleanup();
+        }
+        $jobChain[] = new ImportMultiOwnerCsvJob(folderPath: $folderPath);
+        $jobChain[] = new CleanUpAndStoreDcadDataJob(
+            skipArchiveStorage: (bool) $this->option('skip-account-info')
+        );
+
+        if (!$this->option('skip-account-info')) {
+            $jobChain[] = new SendSuccessfulImportDetailsJob();
+        }
+        Bus::chain($jobChain)
+            ->catch(function (Throwable $e) {
+                dispatch(new CleanUpAndStoreDcadDataJob(true));
+                Notification::route('slack', config('services.slack.webhooks.dcad'))
+                    ->notify(new DcadImportErroredNotification($e->getMessage(), $e->getCode()));
+            })
+            ->dispatch();
 
         return self::SUCCESS;
     }

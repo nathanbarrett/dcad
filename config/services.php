@@ -31,4 +31,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'slack' => [
+        'webhooks' => [
+            'dcad' => env('SLACK_WEBHOOKS_DCAD_CHANNEL'),
+        ],
+    ],
 ];

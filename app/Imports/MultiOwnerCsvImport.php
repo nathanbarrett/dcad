@@ -2,8 +2,8 @@
 declare(strict_types=1);
 namespace App\Imports;
 
+use App\Models\Owner;
 use App\Models\PropertyChange;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use App\Services\DcadDataNormalizer as Normalizer;
@@ -29,55 +29,82 @@ class MultiOwnerCsvImport extends BaseCsvImport
     {
         $ownerName = Normalizer::ucwordsFormat($row, 'owner_name');
         $accountNumber = trim($row->get('account_num', ''));
-        $ownershipPercent = Normalizer::parseFloat($row->get('ownership_pct', ''));
+        $ownershipPercent = round(Normalizer::parseFloat($row->get('ownership_pct', '')), 2);
         if (! $ownerName || ! $accountNumber || ! $ownershipPercent) {
             return;
         }
 
-        $records = DB::table('owner_property')
-            ->select('owner_property.*')
+        $propertyOwners = DB::table('owner_property')
+            ->select('owner_property.*', 'owners.name')
             ->leftJoin('owners', 'owners.id', '=', 'owner_property.owner_id')
             ->where('owner_property.account_num', '=', $accountNumber)
-            ->where('owners.name', '=', $ownerName)
+            ->orderBy('active', 'desc')
+            ->orderBy('created_at', 'desc')
             ->get();
 
-        if ($records->count() === 0) {
+        if ($propertyOwners->count() === 0) {
             $this->zeroRecordMatches++;
-            Log::notice(
-                'Zero record matches for owner percentage change',
-                compact('ownerName', 'accountNumber', 'ownershipPercent')
-            );
-            return;
-        }
-        if ($records->count() > 1) {
-            $this->multipleRecordMatches++;
-            $pivotIds = $records->pluck('id')->toArray();
-            Log::notice(
-                'Multiple record matches for owner percentage change',
-                compact('ownerName', 'accountNumber', 'ownershipPercent', 'pivotIds')
-            );
             return;
         }
 
-        $record = $records->first();
-
-        if (((int) $record->ownership_percent) !== ((int) $ownershipPercent)) {
-            DB::table('owner_property')
-                ->where('id', $record->id)
-                ->update(['ownership_percent' => $ownershipPercent]);
-            $this->newRecordUpdates++;
-            if (Carbon::createFromFormat('Y-m-d H:i:s', $record->created_at)->lessThan(now()->subHours(3))) {
-                return;
+        $ownershipExisted = false;
+        foreach ($propertyOwners as $ownerProperty) {
+            if ($ownerProperty->name !== $ownerName) {
+                continue;
             }
-            PropertyChange::create([
-                'property_id' => $record->property_id,
-                'type' => PropertyChange::TYPE_OWNER_PERCENTAGE_UPDATE,
-                'context' => [
-                    'pivot_id' => $record->id,
-                    'previous_percentage' => (float) $record->ownership_percent,
-                    'new_percentage' => $ownershipPercent,
-                ]
-            ]);
+            $ownershipExisted = true;
+            $recordOwnership = round(Normalizer::parseFloat($ownerProperty->ownership_percent) ?: 0, 2);
+            if ($ownershipPercent !== $recordOwnership) {
+                DB::table('owner_property')
+                    ->where('id', '=', $ownerProperty->id)
+                    ->update([
+                        'ownership_percent' => $ownershipPercent,
+                        'updated_at' => now()
+                    ]);
+                PropertyChange::create([
+                    'property_id' => $ownerProperty->property_id,
+                    'type' => PropertyChange::TYPE_OWNER_PERCENTAGE_UPDATE,
+                    'context' => [
+                        'pivot_id' => $ownerProperty->id,
+                        'previous_percentage' => (float) $ownerProperty->ownership_percent,
+                        'new_percentage' => $ownershipPercent,
+                    ]
+                ]);
+            }
+            break;
         }
+
+        if ($ownershipExisted) {
+            return;
+        }
+
+        // attach a new minimal owner here since there is no way to
+        // match this name with any other identical names
+        $coOwnerPivot = $propertyOwners->first();
+        $owner = Owner::create([
+            'name' => $ownerName,
+            'address_1' => 'multiowner',
+        ]);
+        $owner->properties()->attach([
+            $coOwnerPivot->property_id => [
+                'active' => $coOwnerPivot->active,
+                'deed_transferred_at' => $coOwnerPivot->deed_transferred_at,
+                'account_num' => $coOwnerPivot->account_num,
+                'ownership_percent' => $ownershipPercent
+            ]
+        ]);
+        $newPivot = DB::table('owner_property')
+            ->select('owner_property.*')
+            ->where('owner_id', '=', $owner->id)
+            ->first();
+        PropertyChange::create([
+            'property_id' => $coOwnerPivot->property_id,
+            'type' => PropertyChange::TYPE_OWNER_PERCENTAGE_UPDATE,
+            'context' => [
+                'pivot_id' => $newPivot->id ?? null,
+                'previous_percentage' => 0,
+                'new_percentage' => $ownershipPercent,
+            ]
+        ]);
     }
 }

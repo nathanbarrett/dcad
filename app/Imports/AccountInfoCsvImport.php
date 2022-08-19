@@ -58,13 +58,17 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
                 Log::debug('Account info row missing critical property data', $row->all());
             }
 
-            if ($property->wasRecentlyCreated) {
-                $this->propertyCreations++;
-            }
+            $property->wasRecentlyCreated ?
+                $this->propertyCreations++ :
+                $property->touch();
 
+            $ownerName = Normalizer::ucwordsFormat($row, "owner_name1") ?: $row->get("legal1");
+            if (!$ownerName) {
+                continue;
+            }
             $propertyOwner = Owner::query()
                 ->firstOrCreate([
-                    'name' => Normalizer::ucwordsFormat($row, "owner_name1"),
+                    'name' => $ownerName,
                     'name_2' => Normalizer::ucwordsFormat($row, "owner_name2"),
                     'address_1' => Normalizer::ucwordsFormat($row, "owner_address_line2"),
                     'city' => Normalizer::parseCityName($row, "owner_city"),
@@ -84,7 +88,6 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
                 )
             ) {
                 Log::debug('Account info row missing critical owner data', $row->all());
-
             }
 
             if ($propertyOwner->wasRecentlyCreated) {
@@ -112,7 +115,7 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
                 'account_num' => $accountNumber ?: null,
                 'deed_transferred_at' =>  Normalizer::parseDate($row, "deed_txfr_date"),
             ]);
-            if ($property->created_at->lessThan($this->isNewCutoffTime)) {
+            if ($property->created_at->lessThan($this->isNewCutoffTime) && $previousOwners->count() > 0) {
                 PropertyChange::create([
                     'property_id' => $property->id,
                     'type' => PropertyChange::TYPE_OWNER_UPDATE,
@@ -141,7 +144,7 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
         $streetNum = $row->get("street_num");
         $streetHalfNum = $row->get("street_half_num");
         $streetName = $row->get("full_street_name");
-        if( ! $streetNum || ! $streetName) {
+        if($streetNum === null || strlen($streetNum) === 0 || ! $streetName) {
             return null;
         }
         return $streetNum . $streetHalfNum . ' ' . Normalizer::forceUcWords($streetName);
