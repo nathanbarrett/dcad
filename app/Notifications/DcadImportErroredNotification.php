@@ -30,8 +30,10 @@ class DcadImportErroredNotification extends Notification
             ->content('DCAD Import Error')
             ->attachment(function (SlackAttachment $attachment) {
                 $attachment->title('Error Details')
-                    ->content('Message: ' . $this->errorMessage)
-                    ->content('Error Code: ' . $this->errorCode);
+                    ->content(
+                        'Message: ' . $this->errorMessage . "\n" .
+                        'Error Code: ' . $this->errorCode
+                    );
             });
     }
 }
