@@ -54,6 +54,13 @@
             "@php artisan ide-helper:generate",
             "@php artisan ide-helper:meta",
             "@php artisan ide-helper:models -N"
+        ],
+        "latest": [
+            "git pull",
+            "composer install",
+            "@php artisan migrate --force",
+            "@php artisan optimize",
+            "@php artisan queue:restart"
         ]
     },
     "extra": {
