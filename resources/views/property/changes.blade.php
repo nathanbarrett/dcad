@@ -8,7 +8,9 @@
             <v-list-group v-for="change in changes" :key="change.id" v-model="change.active" no-action>
                 <template v-slot:activator>
                     <v-list-item-content>
-                        <v-list-item-title>@{{ change.property | address }}</v-list-item-title>
+                        <v-list-item-title>
+                            @{{ change.property | address }}&nbsp;&nbsp;&nbsp;<v-chip>@{{ change.property.owners.length }}</v-chip>
+                        </v-list-item-title>
                     </v-list-item-content>
                 </template>
                 <v-list-item v-for="owner in change.property.owners" :key="owner.pivot.id">
