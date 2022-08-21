@@ -29,6 +29,7 @@
                 </v-list-item>
             </v-list-group>
         </v-list>
+        <v-pagination v-model="current_page" :length="total_pages" class="mt-4"></v-pagination>
     </v-container>
 @endsection
 
@@ -39,6 +40,8 @@
             vuetify: new Vuetify(),
             data() {
                 return  {
+                    current_page: {{ $paginator->currentPage() }},
+                    total_pages: {{ $paginator->lastPage() }},
                     zip_codes: {!! json_encode(request()->get('zip_codes', [])) !!},
                     changes: {!! json_encode($paginator->items()) !!}
                                 .map(change => ({ ...change, active: false })),
@@ -72,6 +75,13 @@ if (!datestamp) {
                         return `${arr[0]} and ${arr[1]}`;
                     }
                     return arr.slice(0, -1).join(', ') + (arr.length > 1 ? ', and ' : '') + arr.slice(-1);
+                }
+            },
+            watch: {
+                current_page(new_page) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('page', new_page);
+                    window.location.href = url.href;
                 }
             },
             mounted() {
