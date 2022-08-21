@@ -17,7 +17,7 @@ class Property extends Model
     public function owners(): BelongsToMany
     {
         return $this->belongsToMany(Owner::class)
-            ->withPivot('deed_transferred_at', 'active', 'account_num', 'ownership_percent')
+            ->withPivot('id', 'deed_transferred_at', 'active', 'account_num', 'ownership_percent')
             ->withTimestamps();
     }
 
@@ -25,6 +25,8 @@ class Property extends Model
     {
         return $this->belongsToMany(Owner::class)
             ->wherePivot('active', 1)
+            ->withPivot('deed_transferred_at', 'active', 'account_num', 'ownership_percent')
+            ->withTimestamps()
             ->orderByPivot('id', 'desc');
     }
 

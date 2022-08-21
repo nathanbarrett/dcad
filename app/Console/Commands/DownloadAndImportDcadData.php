@@ -7,6 +7,7 @@ use App\Jobs\CleanUpAndStoreDcadDataJob;
 use App\Jobs\ImportAccountInfoCsvJob;
 use App\Jobs\ImportMultiOwnerCsvJob;
 use App\Jobs\SendSuccessfulImportDetailsJob;
+use App\Models\ImportLog;
 use App\Notifications\DcadImportErroredNotification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Bus;
@@ -38,6 +39,11 @@ class DownloadAndImportDcadData extends Command
     public function handle(): int
     {
         Log::debug('DCAD Import Started');
+        if (!$this->option('skip-account-info')) {
+            $importLog = ImportLog::create([
+               'started_at' => now(),
+            ]);
+        }
         $start = now();
         if (! $data = $this->download()) {
             return self::FAILURE;
@@ -53,7 +59,10 @@ class DownloadAndImportDcadData extends Command
 
         $jobChain = [];
         if (!$this->option('skip-account-info')) {
-            $jobChain[] = new ImportAccountInfoCsvJob(folderPath: $folderPath);
+            $jobChain[] = new ImportAccountInfoCsvJob(
+                folderPath: $folderPath,
+                importLogId: $importLog->id
+            );
             $jobChain[] = new AccountInfoImportCleanup();
         }
         $jobChain[] = new ImportMultiOwnerCsvJob(folderPath: $folderPath);
@@ -62,13 +71,21 @@ class DownloadAndImportDcadData extends Command
         );
 
         if (!$this->option('skip-account-info')) {
-            $jobChain[] = new SendSuccessfulImportDetailsJob();
+            $jobChain[] = new SendSuccessfulImportDetailsJob(
+                importLogId: $importLog->id
+            );
         }
+        $importLogId = $importLog->id;
         Bus::chain($jobChain)
-            ->catch(function (Throwable $e) {
+            ->catch(function (Throwable $e) use ($importLogId) {
                 dispatch(new CleanUpAndStoreDcadDataJob(true));
                 Notification::route('slack', config('services.slack.webhooks.dcad'))
                     ->notify(new DcadImportErroredNotification($e->getMessage(), $e->getCode()));
+                ImportLog::query()->where('id', $importLogId)
+                    ->update([
+                        'errored_at' => now(),
+                        'error_message' => $e->getMessage(),
+                    ]);
             })
             ->dispatch();
 

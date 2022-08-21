@@ -90,7 +90,9 @@ class MultiOwnerCsvImport extends BaseCsvImport
                 'active' => $coOwnerPivot->active,
                 'deed_transferred_at' => $coOwnerPivot->deed_transferred_at,
                 'account_num' => $coOwnerPivot->account_num,
-                'ownership_percent' => $ownershipPercent
+                'ownership_percent' => $ownershipPercent,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]
         ]);
         $newPivot = DB::table('owner_property')

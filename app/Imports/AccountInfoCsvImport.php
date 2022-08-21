@@ -87,7 +87,7 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
                     $propertyOwner->country
                 )
             ) {
-                Log::debug('Account info row missing critical owner data', $row->all());
+//                Log::debug('Account info row missing critical owner data', $row->all());
             }
 
             if ($propertyOwner->wasRecentlyCreated) {

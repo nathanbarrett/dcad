@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\ImportLog;
 use App\Services\DcadProcessor;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -17,7 +18,7 @@ class ImportAccountInfoCsvJob implements ShouldQueue
 
     public int $timeout = 172800;
 
-    public function __construct(public readonly string $folderPath)
+    public function __construct(public readonly string $folderPath, public readonly int $importLogId)
     {
         //
     }
@@ -26,7 +27,13 @@ class ImportAccountInfoCsvJob implements ShouldQueue
     {
         $start = now();
         $stats = $dcad->importAccountInfoCsv($this->folderPath);
-        // TODO log this to CloudWatch
+
+        ImportLog::query()->where('id', $this->importLogId)
+            ->update([
+                'properties_created' => $stats->propertyCreations,
+                'ownerships_updated' => $stats->ownerCreations,
+            ]);
+
         Log::info("account_info.csv imported", [
             'properties_created' => $stats->propertyCreations,
             'owners_created' => $stats->ownerCreations,

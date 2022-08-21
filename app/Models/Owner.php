@@ -14,7 +14,8 @@ class Owner extends Model
 
     public function properties(): BelongsToMany
     {
-        return $this->belongsToMany(Property::class);
+        return $this->belongsToMany(Property::class)
+            ->withTimestamps();
     }
 
     public function currentlyOwnedProperties(): BelongsToMany
