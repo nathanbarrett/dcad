@@ -57,7 +57,7 @@
         ],
         "latest": [
             "git pull",
-            "composer install --optimize-autoloader --no-dev",
+            "composer install --optimize-autoloader",
             "@php artisan migrate --force",
             "@php artisan optimize",
             "@php artisan queue:restart"
