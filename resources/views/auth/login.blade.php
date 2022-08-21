@@ -25,7 +25,7 @@
                     password: '',
                     loggingIn: false,
                     loginError: false,
-                    intendedUrl: "{{ redirect()->intended('/')->getTargetUrl() }}",
+                    intendedUrl: "{!! redirect()->intended('/')->getTargetUrl() !!}",
                 }
             },
             computed: {
