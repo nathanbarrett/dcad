@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LoginRequest;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -15,10 +16,13 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
-    public function login(Request $request): JsonResponse
+    public function login(LoginRequest $request): JsonResponse
     {
         $credentials = $request->only('email', 'password');
         if (auth()->attempt($credentials, true)) {
+            User::query()
+                ->where('email', $credentials['email'])
+                ->update(['last_login_at' => now()]);
             session()->regenerate();
             return response()->json(['message' => 'Successfully logged in'], Response::HTTP_OK);
         }

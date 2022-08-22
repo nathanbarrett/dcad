@@ -60,7 +60,7 @@
                     return dayjs(timestamp).tz('America/Chicago', true).format('MM/DD/YYYY hh:mma');
                 },
                 datestamp(datestamp) {
-if (!datestamp) {
+                    if (!datestamp) {
                         return 'unknown';
                     }
                     return dayjs(datestamp).tz('America/Chicago', true).format('MM/DD/YYYY');
