@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MetricsController;
 use App\Http\Controllers\PropertyChangesController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,5 +40,11 @@ Route::middleware('auth')
 
         Route::get('/property/changes', [PropertyChangesController::class, 'index'])
             ->name('property.changes');
+
+        Route::get('/metrics', [MetricsController::class, 'index'])
+            ->name('metrics.index');
+
+        Route::get('/metrics/daily-changes-detected', [MetricsController::class, 'getDailyChangesDetected'])
+            ->name('metrics.get-daily-changes-detected');
 
     });

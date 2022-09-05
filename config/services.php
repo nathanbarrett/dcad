@@ -36,4 +36,8 @@ return [
             'dcad' => env('SLACK_WEBHOOKS_DCAD_CHANNEL'),
         ],
     ],
+
+    'geocodio' => [
+        'api_key' => env('GEOCODIO_API_KEY'),
+    ],
 ];

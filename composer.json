@@ -7,6 +7,7 @@
     "require": {
         "php": "^8.1.2",
         "bugsnag/bugsnag-laravel": "^2.0",
+        "geocodio/geocodio-library-php": "^1.5",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^9.19",
         "laravel/sanctum": "^2.14.1",

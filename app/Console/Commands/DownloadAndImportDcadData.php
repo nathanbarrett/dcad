@@ -79,6 +79,11 @@ class DownloadAndImportDcadData extends Command
         Bus::chain($jobChain)
             ->catch(function (Throwable $e) use ($importLogId) {
                 dispatch(new CleanUpAndStoreDcadDataJob(true));
+                Log::critical('DCAD Import Failed', [
+                    'importLogId' => $importLogId,
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
                 Notification::route('slack', config('services.slack.webhooks.dcad'))
                     ->notify(new DcadImportErroredNotification($e->getMessage(), $e->getCode()));
                 ImportLog::query()->where('id', $importLogId)
