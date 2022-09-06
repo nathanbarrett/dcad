@@ -43,7 +43,7 @@ class GeocodeAddresses extends Command
             ->selectRaw('properties.id, properties.address_1 as "street", properties.city as "city", properties.state as "state", properties.zip_code as "postal_code"')
             ->whereNull('properties.lat')
             ->whereIn('properties.zip_code', config()->get('zip_codes.preston_hollow'))
-            ->chunkById(100, function ($properties) use ($geocoder, $maxGeocodes, &$totalGeocodes) {
+            ->chunkById(500, function ($properties) use ($geocoder, $maxGeocodes, &$totalGeocodes) {
                 $geocodeData = $properties
                         ->keyBy('id')
                         ->map(function ($property) {
