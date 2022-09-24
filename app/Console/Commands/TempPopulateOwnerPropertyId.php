@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\OwnerProperty;
+use App\Models\PropertyChange;
 use Illuminate\Console\Command;
 
 class TempPopulateOwnerPropertyId extends Command
