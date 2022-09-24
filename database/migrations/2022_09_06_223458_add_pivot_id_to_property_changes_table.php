@@ -16,12 +16,12 @@ return new class extends Migration
     public function up()
     {
         Schema::table('property_changes', function (Blueprint $table) {
-//            $table->unsignedBigInteger('owner_property_id')
-//                ->nullable()
-//                ->after('property_id');
-//            $table->foreign('owner_property_id')
-//                ->references('id')
-//                ->on('owner_property');
+            $table->unsignedBigInteger('owner_property_id')
+                ->nullable()
+                ->after('property_id');
+            $table->foreign('owner_property_id')
+                ->references('id')
+                ->on('owner_property');
         });
     }
 
