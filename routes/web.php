@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MapSearchController;
 use App\Http\Controllers\MetricsController;
 use App\Http\Controllers\PropertyChangesController;
 use Illuminate\Support\Facades\Route;
@@ -46,5 +47,8 @@ Route::middleware('auth')
 
         Route::get('/metrics/daily-changes-detected', [MetricsController::class, 'getDailyChangesDetected'])
             ->name('metrics.get-daily-changes-detected');
+
+        Route::get('/search/maps', [MapSearchController::class, 'index'])
+            ->name('search.maps.index');
 
     });

@@ -13,6 +13,7 @@ class PropertyChangesController extends Controller
     {
         $propertyChangeDays = (int) $request->get('days', 30);
         $perPage = (int) $request->get('per_page', 50);
+        $deedTransferredDays = (int) $request->get('deed_transferred_days');
         if ($perPage > 100) {
             $perPage = 100;
         }
@@ -25,10 +26,15 @@ class PropertyChangesController extends Controller
             ->with('property.owners')
             ->select('property_changes.*')
             ->leftJoin('properties', 'property_changes.property_id', '=', 'properties.id')
+            ->leftJoin('owner_property', 'owner_property.property_id', '=', 'properties.id')
             ->where('property_changes.created_at', '>=', now()->subDays($propertyChangeDays))
             ->when($zipCodes, function (Builder $query, $zipCodes) {
                 return $query->whereIn('properties.zip_code', $zipCodes);
             })
+            ->when($deedTransferredDays, function (Builder $query, $deedTransferredDays) {
+                return $query->where('owner_property.deed_transferred_at', '>=', now()->startOfDay()->subDays($deedTransferredDays));
+            })
+            ->orderBy('owner_property.deed_transferred_at', 'desc')
             ->orderBy('property_changes.created_at', 'desc')
             ->paginate($perPage);
 

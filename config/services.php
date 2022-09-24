@@ -40,4 +40,10 @@ return [
     'geocodio' => [
         'api_key' => env('GEOCODIO_API_KEY'),
     ],
+
+    'google' => [
+        'maps' => [
+            'api_key' => env('GOOGLE_MAPS_API_KEY'),
+        ],
+    ],
 ];

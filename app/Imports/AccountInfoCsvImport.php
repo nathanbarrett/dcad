@@ -109,15 +109,21 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
                     })
                     ->update(['active' => false]);
             }
-            $property->owners()->attach($propertyOwner->id, [
-                'ownership_percent' => 100,
-                'active' => true,
-                'account_num' => $accountNumber ?: null,
-                'deed_transferred_at' =>  Normalizer::parseDate($row, "deed_txfr_date"),
-            ]);
+            $pivotId = DB::table('owner_property')
+                ->insertGetId([
+                    'property_id' => $property->id,
+                    'owner_id' => $propertyOwner->id,
+                    'ownership_percent' => 100,
+                    'active' => true,
+                    'account_num' => $accountNumber ?: null,
+                    'deed_transferred_at' =>  Normalizer::parseDate($row, "deed_txfr_date"),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             if ($property->created_at->lessThan($this->isNewCutoffTime) && $previousOwners->count() > 0) {
                 PropertyChange::create([
                     'property_id' => $property->id,
+                    'owner_property_id' => $pivotId,
                     'type' => PropertyChange::TYPE_OWNER_UPDATE,
                     'context' => [
                         'previous_owner_ids' => $previousOwners->pluck('id')->toArray()

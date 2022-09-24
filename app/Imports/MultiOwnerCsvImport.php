@@ -63,9 +63,9 @@ class MultiOwnerCsvImport extends BaseCsvImport
                     ]);
                 PropertyChange::create([
                     'property_id' => $ownerProperty->property_id,
+                    'owner_property_id' => $ownerProperty->id,
                     'type' => PropertyChange::TYPE_OWNER_PERCENTAGE_UPDATE,
                     'context' => [
-                        'pivot_id' => $ownerProperty->id,
                         'previous_percentage' => (float) $ownerProperty->ownership_percent,
                         'new_percentage' => $ownershipPercent,
                     ]

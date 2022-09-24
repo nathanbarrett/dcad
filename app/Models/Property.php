@@ -34,4 +34,9 @@ class Property extends Model
     {
         return $this->hasMany(PropertyChange::class);
     }
+
+    public function ownerProperties(): HasMany
+    {
+        return $this->hasMany(OwnerProperty::class);
+    }
 }

@@ -8,6 +8,7 @@
     <style>
         [v-cloak] { display: none; }
     </style>
+    @stack('styles')
 </head>
 <body>
 <div id="app">
