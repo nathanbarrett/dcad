@@ -34,6 +34,7 @@ class TempPopulateOwnerPropertyId extends Command
             ->where('type', PropertyChange::TYPE_OWNER_UPDATE);
 
         $bar = $this->output->createProgressBar($query->count());
+        $bar->setFormat('very_verbose');
         $bar->start();
 
         $query->chunkById(1000, function ($changes) use ($bar) {
