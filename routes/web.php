@@ -36,7 +36,7 @@ Route::middleware('auth')
     ->group(function () {
 
         Route::get('/', function () {
-            return redirect()->route('property.changes');
+            return redirect()->route('search.map.index');
         })->name('home');
 
         Route::get('/property/changes', [PropertyChangesController::class, 'index'])
@@ -48,7 +48,10 @@ Route::middleware('auth')
         Route::get('/metrics/daily-changes-detected', [MetricsController::class, 'getDailyChangesDetected'])
             ->name('metrics.get-daily-changes-detected');
 
-        Route::get('/search/maps', [MapSearchController::class, 'index'])
-            ->name('search.maps.index');
+        Route::get('/search/map', [MapSearchController::class, 'index'])
+            ->name('search.map.index');
+
+        Route::post('/search/map', [MapSearchController::class, 'mapSearch'])
+            ->name('search.map.search');
 
     });

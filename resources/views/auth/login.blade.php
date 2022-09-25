@@ -50,7 +50,6 @@
                         this.loggingIn = false;
                         return;
                     }
-                    this.loggingIn = false;
                     window.location.href = this.intendedUrl;
                 }
             }
