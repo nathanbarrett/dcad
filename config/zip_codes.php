@@ -8,4 +8,5 @@ return [
 
     'preston_hollow' => ['75230', '75220'],
 
+    'geocode' => env('GEOCODE_ZIP_CODES', '75230,75220'),
 ];

@@ -34,6 +34,12 @@ class GeocodeAddresses extends Command
      */
     public function handle(): int
     {
+        $zipCodes = config()->get('zip_codes.geocode');
+        if (!$zipCodes) {
+            $this->error('No zip codes specified in config');
+            return self::SUCCESS;
+        }
+        $zipCodes = explode(',', $zipCodes);
         $geocoder = new Geocodio();
         $geocoder->setApiKey(config()->get('services.geocodio.api_key'));
         $maxGeocodes = 2500;
@@ -42,7 +48,7 @@ class GeocodeAddresses extends Command
         DB::table('properties')
             ->selectRaw('properties.id, properties.address_1 as "street", properties.city as "city", properties.state as "state", properties.zip_code as "postal_code"')
             ->whereNull('properties.lat')
-            ->whereIn('properties.zip_code', config()->get('zip_codes.preston_hollow'))
+            ->whereIn('properties.zip_code', $zipCodes)
             ->chunkById(500, function ($properties) use ($geocoder, $maxGeocodes, &$totalGeocodes) {
                 $geocodeData = $properties
                         ->keyBy('id')
