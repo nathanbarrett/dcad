@@ -3,17 +3,19 @@
 namespace App\Console\Commands;
 
 use App\Jobs\AccountInfoImportCleanup;
+use App\Jobs\CleanUpAllManualUploads;
 use App\Jobs\CleanUpAndStoreDcadDataJob;
 use App\Jobs\ImportAccountInfoCsvJob;
 use App\Jobs\ImportMultiOwnerCsvJob;
 use App\Jobs\SendSuccessfulImportDetailsJob;
 use App\Models\ImportLog;
 use App\Notifications\DcadImportErroredNotification;
-use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Throwable;
 
@@ -39,13 +41,11 @@ class DownloadAndImportDcadData extends Command
     public function handle(): int
     {
         Log::debug('DCAD Import Started');
-        if (!$this->option('skip-account-info')) {
-            $importLog = ImportLog::create([
-               'started_at' => now(),
-            ]);
-        }
+        $importLog = ImportLog::create([
+            'started_at' => now(),
+        ]);
         $start = now();
-        if (! $data = $this->download()) {
+        if (! $data = $this->downloadFromS3()) {
             return self::FAILURE;
         }
         $savedFilePath = $this->store($data);
@@ -71,6 +71,7 @@ class DownloadAndImportDcadData extends Command
         );
 
         if (!$this->option('skip-account-info')) {
+            $jobChain[] = new CleanUpAllManualUploads();
             $jobChain[] = new SendSuccessfulImportDetailsJob(
                 importLogId: $importLog->id
             );
@@ -97,31 +98,28 @@ class DownloadAndImportDcadData extends Command
         return self::SUCCESS;
     }
 
-    private function download(): string|bool
+    /**
+     * Checks for any new files in the dcad_uploads folder and downloads
+     * them into the storage/app/dcad folder
+     * @return string|null
+     */
+    private function downloadFromS3(): ?string
     {
-        $agent= 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.0.3705; .NET CLR 1.1.4322)';
-        $ch = curl_init();
-        $source = config('dcad.download_url');
-        curl_setopt($ch, CURLOPT_URL, $source);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_USERAGENT, $agent);
-        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, array($this, 'outputDownloadProgress'));
-        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
-        // curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-        $this->info("Downloading DCAD info...");
-
-        try {
-            $data = curl_exec($ch);
-        } catch(\Exception $exception) {
-            $this->error("Exception while trying to download file: " . $exception->getMessage());
-            if ($this->downloadProgress) {
-                $this->downloadProgress->finish();
-            }
-            curl_close($ch);
-            return false;
+        $s3 = Storage::disk('s3-dcad-data');
+        $files = $s3->allFiles('dcad_uploads');
+        if (count($files) === 0) {
+            $this->tsError('No files found in dcad_uploads folder');
+            return null;
         }
-        curl_close($ch);
+        $key = $files[0];
+        if (! Str::of($key)->lower()->test('/^dcad_uploads\/dcad\S+\.zip$/')) {
+            $this->tsError('Not a valid DCAD file');
+            return null;
+        }
+        $this->tsInfo("Downloading file from S3: $key");
+
+        $data = $s3->get($key);
+        $this->tsInfo("Downloaded file from S3: $key");
 
         return $data;
     }
