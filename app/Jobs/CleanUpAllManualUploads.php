@@ -21,7 +21,7 @@ class CleanUpAllManualUploads implements ShouldQueue
         $disk = Storage::disk('s3-dcad-data');
 
         $manuallyUploadedFiles = collect($disk->allFiles('dcad_uploads'))
-            ->filter(fn (string $key) => Str::of($key)->lower()->test('^dcad_uploads\/dcad\S+\.zip$'));
+            ->filter(fn (string $key) => Str::of($key)->lower()->test('/^dcad_uploads\/dcad\S+\.zip$/'));
 
         if ($manuallyUploadedFiles->isEmpty()) {
             return;
