@@ -45,7 +45,7 @@ class DownloadAndImportDcadData extends Command
             'started_at' => now(),
         ]);
         $start = now();
-        if (! $data = $this->downloadFromS3()) {
+        if (! $data = $this->downloadFromDcadSite()) {
             return self::FAILURE;
         }
         $savedFilePath = $this->store($data);
@@ -101,6 +101,7 @@ class DownloadAndImportDcadData extends Command
     /**
      * Checks for any new files in the dcad_uploads folder and downloads
      * them into the storage/app/dcad folder
+     * Use this as a backup in case the DCAD site goes down again 🤪
      * @return string|null
      */
     private function downloadFromS3(): ?string
@@ -124,6 +125,35 @@ class DownloadAndImportDcadData extends Command
         return $data;
     }
 
+    private function downloadFromDcadSite(): string|bool
+    {
+        $agent= 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.0.3705; .NET CLR 1.1.4322)';
+        $ch = curl_init();
+        $source = config('dcad.download_url');
+        curl_setopt($ch, CURLOPT_URL, $source);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_USERAGENT, $agent);
+        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, array($this, 'outputDownloadProgress'));
+        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+        // curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $this->info("Downloading DCAD info...");
+
+        try {
+            $data = curl_exec($ch);
+        } catch(\Exception $exception) {
+            $this->error("Exception while trying to download file: " . $exception->getMessage());
+            if ($this->downloadProgress) {
+                $this->downloadProgress->finish();
+            }
+            curl_close($ch);
+            return false;
+        }
+        curl_close($ch);
+
+        return $data;
+    }
+
     /**
      * Monitors download progress and updates the download progress bar
      * @param mixed $resource
@@ -133,7 +163,7 @@ class DownloadAndImportDcadData extends Command
      * @param float $uploaded
      * @return void
      */
-    private function outputDownloadProgress($resource, $download_size, $downloaded, $upload_size, $uploaded)
+    private function outputDownloadProgress($resource, $download_size, $downloaded, $upload_size, $uploaded): void
     {
         // $this->info('download progress run: ' . $download_size);
         if(! $download_size || $download_size < 0) {
