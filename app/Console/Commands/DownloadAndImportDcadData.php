@@ -10,13 +10,10 @@ use App\Jobs\ImportMultiOwnerCsvJob;
 use App\Jobs\SendSuccessfulImportDetailsJob;
 use App\Models\ImportLog;
 use App\Notifications\DcadImportErroredNotification;
+use App\Services\DcadDownloader;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
-use Symfony\Component\Console\Helper\ProgressBar;
 use Throwable;
 
 class DownloadAndImportDcadData extends Command
@@ -27,7 +24,8 @@ class DownloadAndImportDcadData extends Command
      * @var string
      */
     protected $signature = 'dcad:cron:download-import-data
-                            {--skip-account-info : skips processing account_info.csv and does not store the archive file}';
+                            {--skip-account-info : skips processing account_info.csv and does not store the archive file}
+                            {--download-only : only downloads the file and does not process it}';
 
     /**
      * The console command description.
@@ -36,26 +34,24 @@ class DownloadAndImportDcadData extends Command
      */
     protected $description = 'Downloads DCAD data and updates the database';
 
-    private ?ProgressBar $downloadProgress = null;
-
-    public function handle(): int
+    public function handle(DcadDownloader $downloader): int
     {
         Log::debug('DCAD Import Started');
         $importLog = ImportLog::create([
             'started_at' => now(),
         ]);
-        $start = now();
-        if (! $data = $this->downloadFromDcadSite()) {
-            return self::FAILURE;
-        }
-        $savedFilePath = $this->store($data);
-        $this->info("Downloaded file in " . now()->diffInSeconds($start) . " seconds");
+        $this->tsInfo("Starting DCAD Download");
+        $progressBar = $this->output->createProgressBar();
+        $progressBar->setFormat('debug');
+        $folderPath = $downloader
+            ->withDownloadProgress($progressBar)
+            ->downloadAndUnzip();
+        $this->tsInfo("Downloaded and extracted file to $folderPath");
 
-        $start = now();
-        if (! $folderPath = $this->unzipFile($savedFilePath)) {
-            return self::FAILURE;
+        if ($this->option('download-only')) {
+            $this->tsInfo("Download only option set, exiting");
+            return self::SUCCESS;
         }
-        $this->info("Unzipped file in " . now()->diffInSeconds($start) . " seconds");
 
         $jobChain = [];
         if (!$this->option('skip-account-info')) {
@@ -87,7 +83,8 @@ class DownloadAndImportDcadData extends Command
                 ]);
                 Notification::route('slack', config('services.slack.webhooks.dcad'))
                     ->notify(new DcadImportErroredNotification($e->getMessage(), $e->getCode()));
-                ImportLog::query()->where('id', $importLogId)
+                ImportLog::query()
+                    ->where('id', $importLogId)
                     ->update([
                         'errored_at' => now(),
                         'error_message' => $e->getMessage(),
@@ -95,126 +92,7 @@ class DownloadAndImportDcadData extends Command
             })
             ->dispatch();
 
+        $this->tsInfo("DCAD Import Started");
         return self::SUCCESS;
-    }
-
-    /**
-     * Checks for any new files in the dcad_uploads folder and downloads
-     * them into the storage/app/dcad folder
-     * Use this as a backup in case the DCAD site goes down again 🤪
-     * @return string|null
-     */
-    private function downloadFromS3(): ?string
-    {
-        $s3 = Storage::disk('s3-dcad-data');
-        $files = $s3->allFiles('dcad_uploads');
-        if (count($files) === 0) {
-            $this->tsError('No files found in dcad_uploads folder');
-            return null;
-        }
-        $key = $files[0];
-        if (! Str::of($key)->lower()->test('/^dcad_uploads\/dcad\S+\.zip$/')) {
-            $this->tsError('Not a valid DCAD file');
-            return null;
-        }
-        $this->tsInfo("Downloading file from S3: $key");
-
-        $data = $s3->get($key);
-        $this->tsInfo("Downloaded file from S3: $key");
-
-        return $data;
-    }
-
-    private function downloadFromDcadSite(): string|bool
-    {
-        $agent= 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.0.3705; .NET CLR 1.1.4322)';
-        $ch = curl_init();
-        $source = config('dcad.download_url');
-        curl_setopt($ch, CURLOPT_URL, $source);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_USERAGENT, $agent);
-        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, array($this, 'outputDownloadProgress'));
-        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
-        // curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-        $this->info("Downloading DCAD info...");
-
-        try {
-            $data = curl_exec($ch);
-        } catch(\Exception $exception) {
-            $this->error("Exception while trying to download file: " . $exception->getMessage());
-            if ($this->downloadProgress) {
-                $this->downloadProgress->finish();
-            }
-            curl_close($ch);
-            return false;
-        }
-        curl_close($ch);
-
-        return $data;
-    }
-
-    /**
-     * Monitors download progress and updates the download progress bar
-     * @param mixed $resource
-     * @param float $download_size
-     * @param float $downloaded
-     * @param float $upload_size
-     * @param float $uploaded
-     * @return void
-     */
-    private function outputDownloadProgress($resource, $download_size, $downloaded, $upload_size, $uploaded): void
-    {
-        // $this->info('download progress run: ' . $download_size);
-        if(! $download_size || $download_size < 0) {
-            return;
-        }
-        if( ! $this->downloadProgress) {
-            $this->downloadProgress = $this->output->createProgressBar();
-            $this->downloadProgress->setFormat('%current%/%max% [%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s% %memory:6s%');
-            $this->downloadProgress->start($download_size);
-        }
-
-        $complete = round($downloaded / $download_size * 100);
-        if($complete >= 100) {
-            $this->downloadProgress->finish();
-            return;
-        }
-
-        $this->downloadProgress->setProgress($downloaded);
-    }
-
-    /**
-     * Stores the downloaded file to the appropriate location
-     *
-     * @param mixed $data
-     * @return string - file path
-     */
-    private function store($data): string
-    {
-        File::ensureDirectoryExists(storage_path('app/dcad'));
-        $filePath = storage_path('app/dcad/dcad_data_' . now()->format('Y-m-d'));
-        $savedFile = $filePath . '.zip';
-        $this->info("\nSaving file to " . $savedFile);
-        $file = fopen($savedFile, "w+");
-        fputs($file, $data);
-        fclose($file);
-
-        return $savedFile;
-    }
-
-    private function unzipFile(string $savedFile): ?string
-    {
-        $lastDot = strrpos($savedFile, '.');
-        $filePath = substr($savedFile, 0, $lastDot);
-        $this->info('Unzipping file...');
-        try {
-            exec("unzip $savedFile -d $filePath");
-        } catch(\Exception $exception) {
-            $this->error("Exception unzipping file after download: " . $exception->getMessage());
-            return null;
-        }
-
-        return $filePath;
     }
 }

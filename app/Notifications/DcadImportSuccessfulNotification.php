@@ -15,7 +15,8 @@ class DcadImportSuccessfulNotification extends Notification
 
     public function __construct(
         private readonly int $propertiesCreated,
-        private readonly int $ownershipsUpdated
+        private readonly int $ownershipsUpdated,
+        private readonly string $durationTime
     ) {}
 
     public function via($notifiable): array
@@ -32,7 +33,8 @@ class DcadImportSuccessfulNotification extends Notification
                 $attachment->title('Import Details')
                     ->content(
                         'Properties Created: ' . number_format($this->propertiesCreated) . "\n" .
-                                'Ownerships Updated: ' . number_format($this->ownershipsUpdated)
+                                'Ownerships Updated: ' . number_format($this->ownershipsUpdated) . "\n" .
+                                'Duration: ' . $this->durationTime
                     );
             });
     }

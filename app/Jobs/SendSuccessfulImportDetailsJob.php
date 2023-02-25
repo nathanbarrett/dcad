@@ -24,13 +24,18 @@ class SendSuccessfulImportDetailsJob implements ShouldQueue
     public function handle(): void
     {
         /* @var ImportLog $importLog */
-        $importLog = ImportLog::find($this->importLogId);
+        $importLog = ImportLog::findOrFail($this->importLogId);
+        $importLog->finished_at = now();
+        $importLog->save();
+
+        $durationTime = $importLog->finished_at->diffForHumans($importLog->started_at);
+
         Notification::route('slack', config('services.slack.webhooks.dcad'))
             ->notify(new DcadImportSuccessfulNotification(
                 $importLog->properties_created,
-                $importLog->ownerships_updated
+                $importLog->ownerships_updated,
+                $durationTime
             ));
-        $importLog->finished_at = now();
-        $importLog->save();
+
     }
 }

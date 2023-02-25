@@ -11,4 +11,13 @@ class MultiOwnerCsvImportStats
         public readonly int $multipleRecordMatches,
         public readonly int $newRecordUpdates
     ) {}
+
+    public function toArray(): array
+    {
+        return [
+            'zeroRecordMatches' => $this->zeroRecordMatches,
+            'multipleRecordMatches' => $this->multipleRecordMatches,
+            'newRecordUpdates' => $this->newRecordUpdates,
+        ];
+    }
 }

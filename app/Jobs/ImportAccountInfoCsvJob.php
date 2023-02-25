@@ -34,11 +34,6 @@ class ImportAccountInfoCsvJob implements ShouldQueue
                 'ownerships_updated' => $stats->ownerCreations,
             ]);
 
-        Log::info("account_info.csv imported", [
-            'properties_created' => $stats->propertyCreations,
-            'owners_created' => $stats->ownerCreations,
-            'existing_relation_no_update' => $stats->noUpdatesRows,
-            'processing_minutes' => now()->diffInMinutes($start),
-        ]);
+        Log::info("account_info.csv imported", array_merge($stats->toArray(), ['duration' => now()->diffForHumans($start)]));
     }
 }

@@ -37,8 +37,8 @@ abstract class Command extends ConsoleCommand
         $this->tsOutput('alert', $message, $verbosity);
     }
 
-    private function tsOutput(string $type, string $message, int|string|null $verbosity = null): void
+    private function tsOutput(string $outputType, string $message, int|string|null $verbosity = null): void
     {
-        $this->$type(now()->toIso8601String() . ": {$message}", $verbosity);
+        $this->$outputType("\n" . now()->toIso8601String() . ": {$message}", $verbosity);
     }
 }

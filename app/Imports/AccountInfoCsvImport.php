@@ -10,6 +10,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\WithProgressBar;
 use App\Services\DcadDataNormalizer as Normalizer;
 
@@ -22,6 +23,8 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
     public int $ownerCreations = 0;
 
     public int $processedRows = 0;
+
+    public int $nonResidentialProperties = 0;
 
     private Carbon $isNewCutoffTime;
 
@@ -36,6 +39,7 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
         foreach ($rows as $index => $row)
         {
             if (! $this->isResidentialProperty($row)) {
+                $this->nonResidentialProperties++;
                 continue;
             }
             /* @var Property $property */
@@ -142,14 +146,17 @@ class AccountInfoCsvImport extends BaseCsvImport implements WithProgressBar
 
     private function isResidentialProperty(Collection $row): bool
     {
-        return trim(strtolower($row->get('division_cd'))) === "res";
+        return Str::of($row->get('division_cd', '') ?? '')
+            ->trim()
+            ->lower()
+            ->startsWith('res');
     }
 
     private function getStreetAddress(Collection $row): ?string
     {
-        $streetNum = $row->get("street_num");
+        $streetNum = $row->get("street_num", '');
         $streetHalfNum = $row->get("street_half_num");
-        $streetName = $row->get("full_street_name");
+        $streetName = $row->get("full_street_name", '');
         if($streetNum === null || strlen($streetNum) === 0 || ! $streetName) {
             return null;
         }
