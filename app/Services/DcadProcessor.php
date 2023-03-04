@@ -9,6 +9,9 @@ use Illuminate\Contracts\Filesystem\FileNotFoundException;
 
 class DcadProcessor
 {
+    /**
+     * @throws FileNotFoundException
+     */
     public function importAccountInfoCsv(string $path, ?OutputStyle $output = null): AccountInfoCsvImportStats
     {
         $import = new AccountInfoCsvImport();
@@ -16,11 +19,11 @@ class DcadProcessor
             $import->withOutput($output);
         }
 
-        if (!file_exists($path . '/account_info.csv')) {
+        if (! $accountInfoCsvPath = $this->resolveCsvPath($path, 'account_info.csv')) {
             throw new FileNotFoundException('account_info.csv not found in ' . $path, 404);
         }
 
-        $import->import($path . '/account_info.csv');
+        $import->import($accountInfoCsvPath);
 
         return new AccountInfoCsvImportStats(
             $import->noUpdatesRows ?: 0,
@@ -31,18 +34,37 @@ class DcadProcessor
         );
     }
 
+    /**
+     * @throws FileNotFoundException
+     */
     public function importMultiOwnerCsv(string $path, ?OutputStyle $output = null): MultiOwnerCsvImportStats
     {
         $import = new MultiOwnerCsvImport();
         if ($output) {
             $import->withOutput($output);
         }
-        $import->import($path . '/multi_owner.csv');
+
+        if (! $multiOwnerCsvPath = $this->resolveCsvPath($path, 'multi_owner.csv')) {
+            throw new FileNotFoundException('multi_owner.csv not found in ' . $path, 404);
+        }
+
+        $import->import($multiOwnerCsvPath);
 
         return new MultiOwnerCsvImportStats(
             $import->zeroRecordMatches ?: 0,
             $import->multipleRecordMatches ?: 0,
             $import->newRecordUpdates ?: 0
         );
+    }
+
+    private function resolveCsvPath(string $path, string $filename): ?string
+    {
+        if (file_exists($path . '/' . $filename)) {
+            return $path . '/' . $filename;
+        }
+        if (file_exists($path . '/' . strtoupper($filename))) {
+            return $path . '/' . strtoupper($filename);
+        }
+        return null;
     }
 }

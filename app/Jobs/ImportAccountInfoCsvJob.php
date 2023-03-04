@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\ImportLog;
 use App\Services\DcadProcessor;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -23,6 +24,9 @@ class ImportAccountInfoCsvJob implements ShouldQueue
         //
     }
 
+    /**
+     * @throws FileNotFoundException
+     */
     public function handle(DcadProcessor $dcad): void
     {
         $start = now();

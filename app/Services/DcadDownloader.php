@@ -154,7 +154,7 @@ class DcadDownloader
                 ->lower()
                 ->replaceMatches('/\s+/', '_');
             $newPath = $file->getPath() . '/' . $newName;
-            File::move($file->getPathname(), $newPath);
+            rename($file->getPathname(), $newPath);
         }
     }
 }

@@ -50,6 +50,7 @@ class DownloadAndImportDcadData extends Command
 
         if ($this->option('download-only')) {
             $this->tsInfo("Download only option set, exiting");
+            $importLog->delete();
             return self::SUCCESS;
         }
 
