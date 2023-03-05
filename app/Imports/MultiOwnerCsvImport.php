@@ -29,7 +29,7 @@ class MultiOwnerCsvImport extends BaseCsvImport
     {
         $ownerName = Normalizer::ucwordsFormat($row, 'owner_name');
         $accountNumber = trim($row->get('account_num', ''));
-        $ownershipPercent = round(Normalizer::parseFloat($row->get('ownership_pct', '')), 2);
+        $ownershipPercent = round(Normalizer::parseFloat($row->get('ownership_pct', '')) ?: 0, 2);
         if (! $ownerName || ! $accountNumber || ! $ownershipPercent) {
             return;
         }
