@@ -6,17 +6,18 @@
     "license": "MIT",
     "require": {
         "php": "^8.1.2",
+        "ext-curl": "*",
         "bugsnag/bugsnag-laravel": "^2.0",
         "geocodio/geocodio-library-php": "^1.5",
         "guzzlehttp/guzzle": "^7.2",
+        "inertiajs/inertia-laravel": "^0.6.9",
         "laravel/framework": "^9.19",
         "laravel/sanctum": "^2.14.1",
         "laravel/slack-notification-channel": "^2.4",
         "laravel/tinker": "^2.7",
         "league/flysystem-aws-s3-v3": "^3.0",
         "maatwebsite/excel": "^3.1",
-        "spatie/laravel-activitylog": "^4.6",
-        "ext-curl": "*"
+        "spatie/laravel-activitylog": "^4.6"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^2.12",
@@ -63,6 +64,8 @@
             "git pull",
             "composer install --optimize-autoloader",
             "@php artisan migrate --force",
+            "yarn",
+            "yarn build",
             "@php artisan optimize",
             "@php artisan queue:restart"
         ]

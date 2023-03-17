@@ -40,7 +40,7 @@ class User extends Authenticatable
         'last_login_at' => 'datetime',
     ];
 
-    public function notificationSubscriptions(): HasMany
+    public function notification_subscriptions(): HasMany
     {
         return $this->hasMany(NotificationSubscription::class);
     }

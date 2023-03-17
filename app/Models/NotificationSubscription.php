@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Contracts\NotificationSubscriptionType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,11 +11,10 @@ class NotificationSubscription extends Model
 {
     use HasFactory;
 
-    const TYPE_OWNERSHIP_CHANGES = 'ownership_changes';
-
     protected $guarded = ['id'];
 
     protected $casts = [
+        'type' => NotificationSubscriptionType::class,
         'filters' => 'collection',
         'active' => 'boolean',
     ];

@@ -25,6 +25,8 @@ class AuthController extends Controller
                 ->where('email', $credentials['email'])
                 ->update(['last_login_at' => now()]);
             session()->regenerate();
+            session()->regenerateToken();
+
             return response()->json(['message' => 'Successfully logged in'], Response::HTTP_OK);
         }
 
@@ -35,6 +37,8 @@ class AuthController extends Controller
     {
         auth()->logout();
         session()->invalidate();
+        session()->regenerateToken();
+
         return redirect()->route('auth.show.login');
     }
 }

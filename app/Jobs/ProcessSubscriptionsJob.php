@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Contracts\NotificationSubscriptionType;
 use App\Models\NotificationSubscription;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -31,7 +32,7 @@ class ProcessSubscriptionsJob implements ShouldQueue
             ->get();
 
         foreach ($subscriptions as $subscription) {
-            if ($subscription->type === NotificationSubscription::TYPE_OWNERSHIP_CHANGES) {
+            if ($subscription->type === NotificationSubscriptionType::OWNERSHIP_CHANGES) {
                 $this->processOwnershipChanges($subscription);
                 continue;
             }

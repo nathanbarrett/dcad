@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\MapSearchController;
 use App\Http\Controllers\MetricsController;
 use App\Http\Controllers\PropertyChangesController;
+use App\Http\Controllers\ZipCodesController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,12 +19,15 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::inertia('/', 'Home')
+    ->name('home');
+
 Route::get('/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
 Route::middleware('guest')
     ->group(function () {
 
-        Route::get('/login', [AuthController::class, 'showLoginForm'])
+        Route::inertia('/login', 'Auth/Login')
             ->name('auth.show.login');
 
         Route::post('/login', [AuthController::class, 'login'])
@@ -35,9 +40,11 @@ Route::middleware('guest')
 Route::middleware('auth')
     ->group(function () {
 
-        Route::get('/', function () {
-            return redirect()->route('search.map.index');
-        })->name('home');
+        Route::inertia('/account', 'Account/Home')
+            ->name('account.home');
+
+        Route::inertia('/account/notification-subscriptions', 'Account/NotificationSubscriptions')
+            ->name('account.notification-subscriptions');
 
         Route::get('/property/changes', [PropertyChangesController::class, 'index'])
             ->name('property.changes');
@@ -53,5 +60,14 @@ Route::middleware('auth')
 
         Route::post('/search/map', [MapSearchController::class, 'mapSearch'])
             ->name('search.map.search');
+
+        Route::get('/zip_codes/all', [ZipCodesController::class, 'all'])
+            ->name('zip_codes.all');
+
+        Route::get('/zip_codes/dallas', [ZipCodesController::class, 'dallas'])
+            ->name('zip_codes.dallas');
+
+        Route::post('/account/notification-subscription', [AccountController::class, 'createNotificationSubscription'])
+            ->name('account.create.notification-subscription');
 
     });
