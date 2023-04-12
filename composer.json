@@ -64,8 +64,8 @@
             "git pull",
             "composer install --optimize-autoloader",
             "@php artisan migrate --force",
-            "yarn",
-            "yarn build",
+            "npm i",
+            "npm run build",
             "@php artisan optimize",
             "@php artisan queue:restart"
         ]
