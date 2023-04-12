@@ -60,7 +60,7 @@
             "@php artisan ide-helper:meta",
             "@php artisan ide-helper:models -N"
         ],
-        "latest": [
+        "pull-latest": [
             "git pull",
             "composer install --optimize-autoloader",
             "@php artisan migrate --force",
